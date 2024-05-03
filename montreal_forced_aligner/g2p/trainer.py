@@ -1,6 +1,5 @@
 import subprocess
 import os
-import random
 import re
 import logging
 import queue
@@ -12,6 +11,7 @@ import shutil
 import traceback
 import sys
 from typing import Set, Union
+import secrets
 
 try:
     import pynini
@@ -315,7 +315,7 @@ class PairNGramAligner:
             cmd_fixed.append("--random_starts=1")
             # Constructs the actual command vectors (plus an index for logging
             # purposes).
-            random.seed(seed)
+            secrets.SystemRandom().seed(seed)
             commands = [
                 (
                     *cmd_fixed,
@@ -327,7 +327,7 @@ class PairNGramAligner:
                     idx,
                 )
                 for (idx, seed) in enumerate(
-                    random.sample(range(1, RAND_MAX), random_starts), 1
+                    secrets.SystemRandom().sample(range(1, RAND_MAX), random_starts), 1
                 )
             ]
             stopped = Stopped()
@@ -577,7 +577,7 @@ class PyniniTrainer(object):
         words = word_dict.keys()
         total_items = len(words)
         validation_items = int(total_items * validation)
-        validation_words = random.sample(words, validation_items)
+        validation_words = secrets.SystemRandom().sample(words, validation_items)
         training_dictionary = {k: v for k, v in word_dict.items()
                                if k not in validation_words
                                }
