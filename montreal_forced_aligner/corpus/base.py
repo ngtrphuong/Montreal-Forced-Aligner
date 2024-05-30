@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 
 from ..exceptions import SampleRateError, CorpusError
 from ..helper import thirdparty_binary, load_text, load_scp, output_mapping, save_groups, filter_scp
+from security import safe_command
 
 
 def get_n_channels(file_path):
@@ -453,7 +454,7 @@ class BaseCorpus(object):
         feat_path = os.path.join(self.output_directory, 'feats.scp')
         if os.path.exists(feat_path):
             with open(os.devnull, 'w') as devnull:
-                dim_proc = subprocess.Popen([thirdparty_binary('feat-to-len'),
+                dim_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('feat-to-len'),
                                              'scp:' + feat_path, 'ark,t:-'],
                                             stdout=subprocess.PIPE,
                                             stderr=devnull)
@@ -468,7 +469,7 @@ class BaseCorpus(object):
 
         path = os.path.join(self.split_directory(), feature_config.feature_id + '.0.scp')
         with open(os.devnull, 'w') as devnull:
-            dim_proc = subprocess.Popen([thirdparty_binary('feat-to-dim'),
+            dim_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('feat-to-dim'),
                                          'scp:' + path, '-'],
                                         stdout=subprocess.PIPE,
                                         stderr=devnull)

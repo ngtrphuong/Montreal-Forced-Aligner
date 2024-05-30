@@ -12,6 +12,7 @@ from .helper import make_path_safe, thirdparty_binary
 from .textgrid import ctm_to_textgrid, parse_ctm
 
 from .exceptions import AlignmentError
+from security import safe_command
 
 
 class Counter(object):
@@ -73,7 +74,7 @@ def acc_stats_func(directory, iteration, job_name, feat_path):
     acc_path = os.path.join(directory, '{}.{}.acc'.format(iteration, job_name))
     ali_path = os.path.join(directory, 'ali.{}'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        acc_proc = subprocess.Popen([thirdparty_binary('gmm-acc-stats-ali'), model_path,
+        acc_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-acc-stats-ali'), model_path,
                                      "scp:" + feat_path, "ark,t:" + ali_path, acc_path],
                                     stderr=logf)
         acc_proc.communicate()
@@ -150,7 +151,7 @@ def compile_train_graphs_func(directory, lang_directory, split_directory, job_na
     if debug:
         with open(log_path, 'w', encoding='utf8') as logf:
             with open(transition_path, 'w', encoding='utf8') as f:
-                subprocess.call([thirdparty_binary('show-transitions'), phones_file_path, mdl_path],
+                safe_command.run(subprocess.call, [thirdparty_binary('show-transitions'), phones_file_path, mdl_path],
                                 stdout=f, stderr=logf)
             parse_transitions(transition_path, triphones_file_path)
     log_path = os.path.join(directory, 'log', 'compile-graphs.0.{}.log'.format(job_name))
@@ -162,7 +163,7 @@ def compile_train_graphs_func(directory, lang_directory, split_directory, job_na
     with open(os.path.join(split_directory, 'text.{}.int'.format(job_name)), 'r', encoding='utf8') as inf, \
             open(fst_path, 'wb') as outf, \
             open(log_path, 'w', encoding='utf8') as logf:
-        proc = subprocess.Popen([thirdparty_binary('compile-train-graphs'),
+        proc = safe_command.run(subprocess.Popen, [thirdparty_binary('compile-train-graphs'),
                                  '--read-disambig-syms={}'.format(
                                      os.path.join(lang_directory, 'phones', 'disambig.int')),
                                  tree_path, mdl_path,
@@ -183,7 +184,7 @@ def compile_train_graphs_func(directory, lang_directory, split_directory, job_na
         with open(log_path, 'a', encoding='utf8') as logf:
             fst_ark_path = os.path.join(directory, 'fsts.{}.ark'.format(job_name))
             fst_scp_path = os.path.join(directory, 'fsts.{}.scp'.format(job_name))
-            proc = subprocess.Popen([thirdparty_binary('fstcopy'),
+            proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstcopy'),
                                      'ark:{}'.format(fst_path),
                                      'ark,scp:{},{}'.format(fst_ark_path, fst_scp_path)], stderr=logf)
             proc.communicate()
@@ -196,19 +197,19 @@ def compile_train_graphs_func(directory, lang_directory, split_directory, job_na
                     utt = line.split()[0]
 
                     dot_path = os.path.join(directory, '{}.dot'.format(utt))
-                    fst_proc = subprocess.Popen([thirdparty_binary('fstcopy'),
+                    fst_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstcopy'),
                                                  'scp:-',
                                                  'scp:echo {} {}|'.format(utt, temp_fst_path)],
                                                 stdin=subprocess.PIPE, stderr=logf)
                     fst_proc.communicate(input=line.encode())
 
-                    draw_proc = subprocess.Popen([thirdparty_binary('fstdraw'), '--portrait=true',
+                    draw_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstdraw'), '--portrait=true',
                                                   '--isymbols={}'.format(phones_file_path),
                                                   '--osymbols={}'.format(words_file_path), temp_fst_path, dot_path],
                                                  stderr=logf)
                     draw_proc.communicate()
                     try:
-                        dot_proc = subprocess.Popen([thirdparty_binary('dot'), '-Tpdf', '-O', dot_path], stderr=logf)
+                        dot_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('dot'), '-Tpdf', '-O', dot_path], stderr=logf)
                         dot_proc.communicate()
                     except FileNotFoundError:
                         pass
@@ -252,11 +253,11 @@ def mono_align_equal_func(mono_directory, job_name, feat_path):
     ali_path = os.path.join(mono_directory, 'ali.{}'.format(job_name))
     acc_path = os.path.join(mono_directory, '0.{}.acc'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        align_proc = subprocess.Popen([thirdparty_binary('align-equal-compiled'), "ark:" + fst_path,
+        align_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('align-equal-compiled'), "ark:" + fst_path,
                                        'scp:' + feat_path, 'ark:' + ali_path],
                                       stderr=logf)
         align_proc.communicate()
-        stats_proc = subprocess.Popen([thirdparty_binary('gmm-acc-stats-ali'), '--binary=true',
+        stats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-acc-stats-ali'), '--binary=true',
                                        mdl_path, 'scp:' + feat_path, 'ark:' + ali_path, acc_path],
                                       stdin=align_proc.stdout, stderr=logf)
         stats_proc.communicate()
@@ -297,7 +298,7 @@ def align_func(directory, iteration, job_name, mdl, config, feat_path, output_di
     ali_path = os.path.join(output_directory, 'ali.{}'.format(job_name))
     score_path = os.path.join(output_directory, 'ali.{}.scores'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        align_proc = subprocess.Popen([thirdparty_binary('gmm-align-compiled'),
+        align_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-align-compiled'),
                                        '--transition-scale={}'.format(config.transition_scale),
                                        '--acoustic-scale={}'.format(config.acoustic_scale),
                                        '--self-loop-scale={}'.format(config.self_loop_scale),
@@ -383,7 +384,7 @@ def decode_func(directory, job_name, mdl, config, feat_path, output_directory, n
         max_active = config.max_active
     with open(log_path, 'w', encoding='utf8') as logf:
         if num_threads is None:
-            decode_proc = subprocess.Popen([thirdparty_binary('gmm-latgen-faster'),
+            decode_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-latgen-faster'),
                                             '--max-active={}'.format(max_active),
                                             '--beam={}'.format(beam),
                                             '--lattice-beam={}'.format(config.lattice_beam),
@@ -394,7 +395,7 @@ def decode_func(directory, job_name, mdl, config, feat_path, output_directory, n
                                             "ark:" + lat_path],
                                            stderr=logf)
         else:
-            decode_proc = subprocess.Popen([thirdparty_binary('gmm-latgen-faster-parallel'),
+            decode_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-latgen-faster-parallel'),
                                             '--max-active={}'.format(max_active),
                                             '--beam={}'.format(beam),
                                             '--lattice-beam={}'.format(config.lattice_beam),
@@ -418,15 +419,15 @@ def score_func(directory, job_name, config, output_directory, language_model_wei
     if word_insertion_penalty is None:
         word_insertion_penalty = config.word_insertion_penalty
     with open(log_path, 'w', encoding='utf8') as logf:
-        scale_proc = subprocess.Popen([thirdparty_binary('lattice-scale'),
+        scale_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-scale'),
                                        '--inv-acoustic-scale={}'.format(language_model_weight),
                                        'ark:' + lat_path, 'ark:-'
                                        ], stdout=subprocess.PIPE, stderr=logf)
-        penalty_proc = subprocess.Popen([thirdparty_binary('lattice-add-penalty'),
+        penalty_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-add-penalty'),
                                          '--word-ins-penalty={}'.format(word_insertion_penalty),
                                          'ark:-', 'ark:-'],
                                         stdin=scale_proc.stdout, stdout=subprocess.PIPE, stderr=logf)
-        best_path_proc = subprocess.Popen([thirdparty_binary('lattice-best-path'),
+        best_path_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-best-path'),
                                            '--word-symbol-table={}'.format(words_path),
                                            'ark:-', 'ark,t:' + tra_path], stdin=penalty_proc.stdout, stderr=logf)
         best_path_proc.communicate()
@@ -504,27 +505,27 @@ def initial_fmllr_func(directory, split_directory, sil_phones, job_name, mdl, co
     feat_fmllr_ark_path = os.path.join(split_directory,
                                        feat_ark)
     with open(log_path, 'w', encoding='utf8') as logf:
-        latt_post_proc = subprocess.Popen([thirdparty_binary('lattice-to-post'),
+        latt_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-to-post'),
                                            '--acoustic-scale={}'.format(config.acoustic_scale),
                                            'ark:' + lat_path, 'ark:-'], stdout=subprocess.PIPE,
                                           stderr=logf)
-        weight_silence_proc = subprocess.Popen([thirdparty_binary('weight-silence-post'),
+        weight_silence_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('weight-silence-post'),
                                                 str(config.silence_weight),
                                                 sil_phones, mdl, 'ark:-', 'ark:-'],
                                                stdin=latt_post_proc.stdout, stdout=subprocess.PIPE,
                                                stderr=logf)
-        gmm_gpost_proc = subprocess.Popen([thirdparty_binary('gmm-post-to-gpost'),
+        gmm_gpost_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-post-to-gpost'),
                                            mdl, 'scp:' + feat_path, 'ark:-', 'ark:-'],
                                           stdin=weight_silence_proc.stdout, stdout=subprocess.PIPE,
                                           stderr=logf)
-        fmllr_proc = subprocess.Popen([thirdparty_binary('gmm-est-fmllr-gpost'),
+        fmllr_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-est-fmllr-gpost'),
                                        '--fmllr-update-type={}'.format(config.fmllr_update_type),
                                        '--spk2utt=ark:' + spk2utt_path, mdl, 'scp:' + feat_path,
                                        'ark,s,cs:-', 'ark:' + pre_trans_path],
                                       stdin=gmm_gpost_proc.stdout, stdout=subprocess.PIPE, stderr=logf)
         fmllr_proc.communicate()
         # error
-        subprocess.call([thirdparty_binary('transform-feats'),
+        safe_command.run(subprocess.call, [thirdparty_binary('transform-feats'),
                          '--utt2spk=ark:' + utt2spk_path,
                          'ark:' + pre_trans_path, 'scp:' + base_scp,
                          'ark,scp:{},{}'.format(feat_fmllr_ark_path, feat_fmllr_scp_path)],
@@ -544,7 +545,7 @@ def lat_gen_fmllr_func(directory, split_directory, sil_phones, job_name, mdl, co
     feat_fmllr_scp_path = os.path.join(split_directory, feat_scp)
     with open(log_path, 'w', encoding='utf8') as logf:
         if num_threads is None:
-            lat_gen_proc = subprocess.Popen([thirdparty_binary('gmm-latgen-faster'),
+            lat_gen_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-latgen-faster'),
                                              '--max-active={}'.format(config.max_active),
                                              '--beam={}'.format(config.beam),
                                              '--lattice-beam={}'.format(config.lattice_beam),
@@ -555,7 +556,7 @@ def lat_gen_fmllr_func(directory, split_directory, sil_phones, job_name, mdl, co
                                              mdl, hclg_path, 'scp:' + feat_fmllr_scp_path, 'ark:' + tmp_lat_path
                                              ], stderr=logf)
         else:
-            lat_gen_proc = subprocess.Popen([thirdparty_binary('gmm-latgen-faster-parallel'),
+            lat_gen_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-latgen-faster-parallel'),
                                              '--max-active={}'.format(config.max_active),
                                              '--beam={}'.format(config.beam),
                                              '--lattice-beam={}'.format(config.lattice_beam),
@@ -589,39 +590,39 @@ def final_fmllr_est_func(directory, split_directory, sil_phones, job_name, mdl, 
     feat_fmllr_ark_path = os.path.join(split_directory, feat_ark)
     with open(log_path, 'w', encoding='utf8') as logf:
         if num_threads is None:
-            determinize_proc = subprocess.Popen([thirdparty_binary('lattice-determinize-pruned'),
+            determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-determinize-pruned'),
                                                  '--acoustic-scale={}'.format(config.acoustic_scale),
                                                  '--beam=4.0', 'ark:' + tmp_lat_path, 'ark:-'],
                                                 stderr=logf, stdout=subprocess.PIPE)
         else:
-            determinize_proc = subprocess.Popen([thirdparty_binary('lattice-determinize-pruned-parallel'),
+            determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-determinize-pruned-parallel'),
                                                  '--acoustic-scale={}'.format(config.acoustic_scale),
                                                  '--num-threads={}'.format(num_threads),
                                                  '--beam=4.0', 'ark:' + tmp_lat_path, 'ark:-'],
                                                 stderr=logf, stdout=subprocess.PIPE)
-        latt_post_proc = subprocess.Popen([thirdparty_binary('lattice-to-post'),
+        latt_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-to-post'),
                                            '--acoustic-scale={}'.format(config.acoustic_scale),
                                            'ark:' + lat_path, 'ark:-'],
                                           stdin=determinize_proc.stdout, stdout=subprocess.PIPE, stderr=logf)
-        weight_silence_proc = subprocess.Popen([thirdparty_binary('weight-silence-post'),
+        weight_silence_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('weight-silence-post'),
                                                 str(config.silence_weight),
                                                 sil_phones, mdl, 'ark:-', 'ark:-'],
                                                stdin=latt_post_proc.stdout, stdout=subprocess.PIPE,
                                                stderr=logf)
-        fmllr_proc = subprocess.Popen([thirdparty_binary('gmm-est-fmllr'),
+        fmllr_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-est-fmllr'),
                                        '--fmllr-update-type={}'.format(config.fmllr_update_type),
                                        '--spk2utt=ark:' + spk2utt_path, mdl, 'scp:' + feat_fmllr_scp_path,
                                        'ark,s,cs:-', 'ark:' + trans_tmp_path],
                                       stdin=weight_silence_proc.stdout, stdout=subprocess.PIPE, stderr=logf)
         fmllr_proc.communicate()
 
-        compose_proc = subprocess.Popen([thirdparty_binary('compose-transforms'),
+        compose_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('compose-transforms'),
                                          '--b-is-affine=true', 'ark:' + trans_tmp_path,
                                          'ark:' + pre_trans_path, 'ark:' + trans_path],
                                         stderr=logf)
         compose_proc.communicate()
 
-        subprocess.call([thirdparty_binary('transform-feats'),
+        safe_command.run(subprocess.call, [thirdparty_binary('transform-feats'),
                          '--utt2spk=ark:' + utt2spk_path,
                          'ark:' + trans_path, 'scp:' + base_scp,
                          'ark,scp:{},{}'.format(feat_fmllr_ark_path, feat_fmllr_scp_path)],
@@ -636,18 +637,18 @@ def fmllr_rescore_func(directory, split_directory, sil_phones, job_name, mdl, co
     feat_fmllr_scp_path = os.path.join(split_directory,
                                        config.feature_config.feature_id + '.{}.scp'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        rescore_proc = subprocess.Popen([thirdparty_binary('gmm-rescore-lattice'),
+        rescore_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-rescore-lattice'),
                                          mdl, 'ark:' + tmp_lat_path,
                                          'scp:' + feat_fmllr_scp_path, 'ark:-'],
                                         stdout=subprocess.PIPE, stderr=logf)
         if num_threads is None:
-            determinize_proc = subprocess.Popen([thirdparty_binary('lattice-determinize-pruned'),
+            determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-determinize-pruned'),
                                                  '--acoustic-scale={}'.format(config.acoustic_scale),
                                                  '--beam={}'.format(config.lattice_beam),
                                                  'ark:-', 'ark:' + final_lat_path
                                                  ], stdin=rescore_proc.stdout, stderr=logf)
         else:
-            determinize_proc = subprocess.Popen([thirdparty_binary('lattice-determinize-pruned-parallel'),
+            determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-determinize-pruned-parallel'),
                                                  '--acoustic-scale={}'.format(config.acoustic_scale),
                                                  '--beam={}'.format(config.lattice_beam),
                                                  '--num-threads={}'.format(num_threads),
@@ -780,21 +781,21 @@ def compute_alignment_improvement_func(iteration, config, model_directory, job_n
 
         frame_shift = config.feature_config.frame_shift / 1000
         with open(log_path, 'w', encoding='utf8') as logf:
-            lin_proc = subprocess.Popen([thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
+            lin_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
                                          "ark:" + text_int_path,
                                          '', '', 'ark:-'],
                                         stdout=subprocess.PIPE, stderr=logf)
-            align_proc = subprocess.Popen([thirdparty_binary('lattice-align-words'),
+            align_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-align-words'),
                                            os.path.join(config.dictionary.phones_dir, 'word_boundary.int'), model_path,
                                            'ark:-', 'ark:-'],
                                           stdin=lin_proc.stdout, stderr=logf,
                                           stdout=subprocess.PIPE)
-            phone_proc = subprocess.Popen([thirdparty_binary('lattice-to-phone-lattice'), model_path,
+            phone_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-to-phone-lattice'), model_path,
                                            'ark:-', "ark:-"],
                                           stdin=align_proc.stdout,
                                           stdout=subprocess.PIPE,
                                           stderr=logf)
-            nbest_proc = subprocess.Popen([thirdparty_binary('nbest-to-ctm'),
+            nbest_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('nbest-to-ctm'),
                                            '--frame-shift={}'.format(frame_shift),
                                            "ark:-", phone_ctm_path],
                                           stdin=phone_proc.stdout,
@@ -935,32 +936,32 @@ def ali_to_textgrid_func(align_config, model_directory, dictionary, corpus, job_
 
     frame_shift = align_config.feature_config.frame_shift / 1000
     with open(log_path, 'w', encoding='utf8') as logf:
-        lin_proc = subprocess.Popen([thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
+        lin_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
                                      "ark:" + text_int_path,
                                      '', '', 'ark,t:' + nbest_path],
                                     stdout=subprocess.PIPE, stderr=logf)
 
         lin_proc.communicate()
-        lin_proc = subprocess.Popen([thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
+        lin_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
                                      "ark:" + text_int_path,
                                      '', '', 'ark:-'],
                                     stdout=subprocess.PIPE, stderr=logf)
-        align_proc = subprocess.Popen([thirdparty_binary('lattice-align-words'),
+        align_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-align-words'),
                                        os.path.join(dictionary.phones_dir, 'word_boundary.int'), model_path,
                                        'ark:-', 'ark,t:' + aligned_path],
                                       stdin=lin_proc.stdout, stderr=logf)
         align_proc.communicate()
 
-        subprocess.call([thirdparty_binary('nbest-to-ctm'),
+        safe_command.run(subprocess.call, [thirdparty_binary('nbest-to-ctm'),
                          '--frame-shift={}'.format(frame_shift),
                          'ark:' + aligned_path,
                          word_ctm_path],
                         stderr=logf)
-        phone_proc = subprocess.Popen([thirdparty_binary('lattice-to-phone-lattice'), model_path,
+        phone_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-to-phone-lattice'), model_path,
                                        'ark:' + aligned_path, "ark:-"],
                                       stdout=subprocess.PIPE,
                                       stderr=logf)
-        nbest_proc = subprocess.Popen([thirdparty_binary('nbest-to-ctm'),
+        nbest_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('nbest-to-ctm'),
                                        '--frame-shift={}'.format(frame_shift),
                                        "ark:-", phone_ctm_path],
                                       stdin=phone_proc.stdout,
@@ -1044,23 +1045,23 @@ def generate_pronunciations_func(align_config, model_directory, dictionary, corp
     nbest_path = os.path.join(model_directory, 'nbest.{}'.format(job_name))
     pron_path = os.path.join(model_directory, 'prons.{}'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        lin_proc = subprocess.Popen([thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
+        lin_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
                                      "ark:" + text_int_path,
                                      '', '', 'ark,t:' + nbest_path],
                                     stdout=subprocess.PIPE, stderr=logf)
 
         lin_proc.communicate()
-        lin_proc = subprocess.Popen([thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
+        lin_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('linear-to-nbest'), "ark:" + ali_path,
                                      "ark:" + text_int_path,
                                      '', '', 'ark:-'],
                                     stdout=subprocess.PIPE, stderr=logf)
-        align_proc = subprocess.Popen([thirdparty_binary('lattice-align-words'),
+        align_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-align-words'),
                                        os.path.join(dictionary.phones_dir, 'word_boundary.int'), model_path,
                                        'ark:-', 'ark,t:' + aligned_path],
                                       stdin=lin_proc.stdout, stderr=logf)
         align_proc.communicate()
 
-        subprocess.call([thirdparty_binary('nbest-to-prons'),
+        safe_command.run(subprocess.call, [thirdparty_binary('nbest-to-prons'),
                          model_path,
                          'ark:' + aligned_path,
                          pron_path],
@@ -1114,7 +1115,7 @@ def tree_stats_func(directory, ci_phones, mdl, feat_path, ali_path, job_name):
     treeacc_path = os.path.join(directory, '{}.treeacc'.format(job_name))
 
     with open(log_path, 'w', encoding='utf8') as logf:
-        subprocess.call([thirdparty_binary('acc-tree-stats')] + context_opts +
+        safe_command.run(subprocess.call, [thirdparty_binary('acc-tree-stats')] + context_opts +
                         ['--ci-phones=' + ci_phones, mdl, "scp:" + feat_path,
                          "ark:" + ali_path,
                          treeacc_path], stderr=logf)
@@ -1162,7 +1163,7 @@ def tree_stats(directory, align_directory, split_directory, ci_phones, num_jobs,
     tree_accs = [os.path.join(directory, '{}.treeacc'.format(x)) for x in range(num_jobs)]
     log_path = os.path.join(directory, 'log', 'sum_tree_acc.log')
     with open(log_path, 'w', encoding='utf8') as logf:
-        subprocess.call([thirdparty_binary('sum-tree-stats'), os.path.join(directory, 'treeacc')] +
+        safe_command.run(subprocess.call, [thirdparty_binary('sum-tree-stats'), os.path.join(directory, 'treeacc')] +
                         tree_accs, stderr=logf)
     # for f in tree_accs:
     #    os.remove(f)
@@ -1177,7 +1178,7 @@ def convert_alignments_func(directory, align_directory, job_name):
 
     log_path = os.path.join(directory, 'log', 'convert.{}.log'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subprocess.call([thirdparty_binary('convert-ali'), ali_mdl_path,
+        safe_command.run(subprocess.call, [thirdparty_binary('convert-ali'), ali_mdl_path,
                          mdl_path, tree_path, "ark:" + ali_path,
                          "ark:" + new_ali_path], stderr=logf)
 
@@ -1231,14 +1232,14 @@ def calc_fmllr_func(directory, split_directory, sil_phones, job_name, config, in
     post_path = os.path.join(directory, 'post.{}'.format(job_name))
     weight_path = os.path.join(directory, 'weight.{}'.format(job_name))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subprocess.call([thirdparty_binary('ali-to-post'),
+        safe_command.run(subprocess.call, [thirdparty_binary('ali-to-post'),
                          "ark:" + ali_path, 'ark:' + post_path], stderr=logf)
 
-        subprocess.call([thirdparty_binary('weight-silence-post'), '0.0',
+        safe_command.run(subprocess.call, [thirdparty_binary('weight-silence-post'), '0.0',
                          sil_phones, mdl_path, 'ark:' + post_path,
                          'ark:' + weight_path], stderr=logf)
 
-        subprocess.call([thirdparty_binary('gmm-est-fmllr'),
+        safe_command.run(subprocess.call, [thirdparty_binary('gmm-est-fmllr'),
                          '--verbose=4',
                          '--fmllr-update-type={}'.format(config.fmllr_update_type),
                          '--spk2utt=ark:' + spk2utt_path, mdl_path, "scp:" + feat_scp,
@@ -1246,7 +1247,7 @@ def calc_fmllr_func(directory, split_directory, sil_phones, job_name, config, in
                         stderr=logf)
 
         if not initial:
-            subprocess.call([thirdparty_binary('compose-transforms'),
+            safe_command.run(subprocess.call, [thirdparty_binary('compose-transforms'),
                              '--b-is-affine=true',
                              'ark:' + tmp_trans_path, 'ark:' + trans_path,
                              'ark:' + cmp_trans_path], stderr=logf)
@@ -1260,7 +1261,7 @@ def calc_fmllr_func(directory, split_directory, sil_phones, job_name, config, in
                                            config.feature_config.feature_id + '.{}.scp'.format(job_name))
         feat_fmllr_ark_path = os.path.join(config.corpus.split_directory(),
                                            config.feature_config.feature_id + '.{}.ark'.format(job_name))
-        subprocess.call([thirdparty_binary('transform-feats'),
+        safe_command.run(subprocess.call, [thirdparty_binary('transform-feats'),
                          '--utt2spk=ark:' + utt2spk_path,
                          'ark:' + trans_path, 'scp:' + base_scp,
                          'ark,scp:{},{}'.format(feat_fmllr_ark_path, feat_fmllr_scp_path)],
@@ -1325,17 +1326,17 @@ def lda_acc_stats_func(directory, split_dir, align_directory, config, ci_phones,
     log_path = os.path.join(directory, 'log', 'ali_to_post.{}.log'.format(i))
     with open(log_path, 'w', encoding='utf8') as logf:
         spliced_feat_path = os.path.join(split_dir, config.feature_config.feature_id + '.{}.scp'.format(i))
-        ali_to_post_proc = subprocess.Popen([thirdparty_binary('ali-to-post'),
+        ali_to_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ali-to-post'),
                                              'ark:' + os.path.join(align_directory, 'ali.{}'.format(i)),
                                              'ark:-'],
                                             stderr=logf, stdout=subprocess.PIPE)
-        weight_silence_post_proc = subprocess.Popen([thirdparty_binary('weight-silence-post'),
+        weight_silence_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('weight-silence-post'),
                                                      str(config.boost_silence), ci_phones,
                                                      os.path.join(align_directory, 'final.mdl'),
                                                      'ark:-', 'ark:-'],
                                                     stdin=ali_to_post_proc.stdout,
                                                     stderr=logf, stdout=subprocess.PIPE)
-        acc_lda_post_proc = subprocess.Popen([thirdparty_binary('acc-lda'),
+        acc_lda_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('acc-lda'),
                                               '--rand-prune=' + str(config.random_prune),
                                               os.path.join(align_directory, 'final.mdl'),
                                               'scp:' + spliced_feat_path,
@@ -1390,7 +1391,7 @@ def lda_acc_stats(directory, split_directory, align_directory, config, ci_phones
     for x in range(num_jobs):
         acc_list.append(os.path.join(directory, 'lda.{}.acc'.format(x)))
     with open(log_path, 'w', encoding='utf8') as logf:
-        est_lda_proc = subprocess.Popen([thirdparty_binary('est-lda'),
+        est_lda_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('est-lda'),
                                          '--write-full-matrix=' + os.path.join(directory, 'full.mat'),
                                          '--dim=' + str(config.lda_dimension),
                                          os.path.join(directory, 'lda.mat')] + acc_list,
@@ -1417,13 +1418,13 @@ def calc_lda_mllt_func(directory, split_directory, sil_phones, job_name, config,
 
     # Estimating MLLT
     with open(log_path, 'a', encoding='utf8') as logf:
-        subprocess.call([thirdparty_binary('ali-to-post'),
+        safe_command.run(subprocess.call, [thirdparty_binary('ali-to-post'),
                          "ark:" + ali_path, 'ark:' + post_path], stderr=logf)
 
-        subprocess.call([thirdparty_binary('weight-silence-post'), '0.0',
+        safe_command.run(subprocess.call, [thirdparty_binary('weight-silence-post'), '0.0',
                          sil_phones, mdl_path, 'ark:' + post_path,
                          'ark:' + weight_path], stderr=logf)
-        subprocess.call([thirdparty_binary('gmm-acc-mllt'),
+        safe_command.run(subprocess.call, [thirdparty_binary('gmm-acc-mllt'),
                          '--rand-prune=' + str(config.random_prune),
                          mdl_path,
                          'scp:' + feat_path,
@@ -1491,17 +1492,17 @@ def calc_lda_mllt(directory, split_directory, sil_phones, num_jobs, config,
         macc_list = []
         for x in range(num_jobs):
             macc_list.append(os.path.join(directory, '{}.{}.macc'.format(model_name, x)))
-        subprocess.call([thirdparty_binary('est-mllt'),
+        safe_command.run(subprocess.call, [thirdparty_binary('est-mllt'),
                          new_mat_path]
                         + macc_list,
                         stderr=logf)
-        subprocess.call([thirdparty_binary('gmm-transform-means'),
+        safe_command.run(subprocess.call, [thirdparty_binary('gmm-transform-means'),
                          new_mat_path,
                          mdl_path, mdl_path],
                         stderr=logf)
 
         if os.path.exists(previous_mat_path):
-            subprocess.call([thirdparty_binary('compose-transforms'),
+            safe_command.run(subprocess.call, [thirdparty_binary('compose-transforms'),
                              new_mat_path,
                              previous_mat_path,
                              composed_path],
@@ -1519,14 +1520,14 @@ def gmm_gselect_func(config, x):
     log_path = os.path.join(config.train_directory, 'log', 'gselect.{}.log'.format(x))
     feat_path = os.path.join(config.data_directory, config.feature_file_base_name + '.{}.scp'.format(x))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subsample_feats_proc = subprocess.Popen([thirdparty_binary('subsample-feats'),
+        subsample_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('subsample-feats'),
                                                  '--n=' + str(config.subsample),
                                                  'scp:' + feat_path,
                                                  'ark:-'],
                                                 stdout=subprocess.PIPE,
                                                 stderr=logf)
 
-        gselect_proc = subprocess.Popen([thirdparty_binary('gmm-gselect'),
+        gselect_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-gselect'),
                                          '--n=' + str(config.num_gselect),
                                          os.path.join(config.train_directory, '1.dubm'),
                                          'ark:-',
@@ -1569,13 +1570,13 @@ def acc_global_stats_func(config, x, iteration):
     log_path = os.path.join(config.train_directory, 'log', 'acc.{}.{}.log'.format(iteration, x))
     feat_path = os.path.join(config.data_directory, config.feature_file_base_name + '.{}.scp'.format(x))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subsample_feats_proc = subprocess.Popen([thirdparty_binary('subsample-feats'),
+        subsample_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('subsample-feats'),
                                                  '--n=' + str(config.subsample),
                                                  'scp:' + feat_path,
                                                  'ark:-'],
                                                 stdout=subprocess.PIPE,
                                                 stderr=logf)
-        gmm_global_acc_proc = subprocess.Popen([thirdparty_binary('gmm-global-acc-stats'),
+        gmm_global_acc_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-global-acc-stats'),
                                                 '--gselect=' + 'ark:' + os.path.join(config.train_directory,
                                                                                      'gselect.{}'.format(x)),
                                                 os.path.join(config.train_directory, '{}.dubm'.format(iteration)),
@@ -1621,13 +1622,13 @@ def gauss_to_post_func(config, x):
     log_path = os.path.join(config.train_directory, 'log', 'post.{}.log'.format(x))
     feat_path = os.path.join(config.data_directory, config.feature_file_base_name + '.{}.scp'.format(x))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subsample_feats_proc = subprocess.Popen([thirdparty_binary('subsample-feats'),
+        subsample_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('subsample-feats'),
                                                  '--n=' + str(config.subsample),
                                                  'scp:' + feat_path,
                                                  'ark:-'],
                                                 stdout=subprocess.PIPE,
                                                 stderr=logf)
-        gmm_global_get_post_proc = subprocess.Popen([thirdparty_binary('gmm-global-get-post'),
+        gmm_global_get_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-global-get-post'),
                                                      '--n=' + str(config.num_gselect),
                                                      '--min-post=' + str(config.min_post),
                                                      os.path.join(config.train_directory, 'final.dubm'),
@@ -1636,7 +1637,7 @@ def gauss_to_post_func(config, x):
                                                     stdout=subprocess.PIPE,
                                                     stdin=subsample_feats_proc.stdout,
                                                     stderr=logf)
-        scale_post_proc = subprocess.Popen([thirdparty_binary('scale-post'),
+        scale_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('scale-post'),
                                             'ark:-',
                                             str(modified_posterior_scale),
                                             'ark:' + os.path.join(config.train_directory, 'post.{}'.format(x))],
@@ -1678,13 +1679,13 @@ def acc_ivector_stats_func(config, x, iteration):
     log_path = os.path.join(config.train_directory, 'log', 'acc.{}.{}.log'.format(iteration, x))
     feat_path = os.path.join(config.data_directory, config.feature_config.feature_id + '.{}.scp'.format(x))
     with open(log_path, 'w', encoding='utf8') as logf:
-        subsample_feats_proc = subprocess.Popen([thirdparty_binary('subsample-feats'),
+        subsample_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('subsample-feats'),
                                                  '--n=' + str(config.subsample),
                                                  'scp:' + feat_path,
                                                  'ark:-'],
                                                 stdout=subprocess.PIPE,
                                                 stderr=logf)
-        acc_stats_proc = subprocess.Popen([thirdparty_binary('ivector-extractor-acc-stats'),
+        acc_stats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ivector-extractor-acc-stats'),
                                            os.path.join(config.train_directory, '{}.ie'.format(iteration)),
                                            'ark:-',
                                            'ark:' + os.path.join(config.train_directory, 'post.{}'.format(x)),
@@ -1727,7 +1728,7 @@ def acc_ivector_stats(config, num_jobs, iteration):
     accinits = [os.path.join(config.train_directory, 'accinit.{}.{}'.format(iteration, j)) for j in range(num_jobs)]
     log_path = os.path.join(config.train_directory, 'log', 'sum_acc.{}.log'.format(iteration))
     with open(log_path, 'w', encoding='utf8') as logf:
-        sum_accs_proc = subprocess.Popen([thirdparty_binary('ivector-extractor-sum-accs'),
+        sum_accs_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ivector-extractor-sum-accs'),
                                           '--parallel=true']
                                          + accinits
                                          + [os.path.join(config.train_directory, 'acc.{}'.format(iteration))],
@@ -1768,11 +1769,11 @@ def extract_ivectors_func(config, job_id):
     posterior_scale = 0.1
     max_count = 100
     with open(log_path, 'w', encoding='utf8') as logf:
-        ali_to_post_proc = subprocess.Popen([thirdparty_binary('ali-to-post'),
+        ali_to_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ali-to-post'),
                                              'ark:' + ali_path, 'ark:-'],
                                             stderr=logf,
                                             stdout=subprocess.PIPE)
-        weight_silence_proc = subprocess.Popen([thirdparty_binary('weight-silence-post'),
+        weight_silence_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('weight-silence-post'),
                                                 str(silence_weight),
                                                 sil_phones,
                                                 mdl_path,
@@ -1780,13 +1781,13 @@ def extract_ivectors_func(config, job_id):
                                                stderr=logf,
                                                stdin=ali_to_post_proc.stdout,
                                                stdout=subprocess.PIPE)
-        post_to_weight_proc = subprocess.Popen([thirdparty_binary('post-to-weights'),
+        post_to_weight_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('post-to-weights'),
                                                 'ark:-', 'ark:' + weight_path],
                                                stderr=logf,
                                                stdin=weight_silence_proc.stdout)
         post_to_weight_proc.communicate()
 
-        gmm_global_get_post_proc = subprocess.Popen([thirdparty_binary('gmm-global-get-post'),
+        gmm_global_get_post_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-global-get-post'),
                                                      '--n=' + str(config.num_gselect),
                                                      '--min-post=' + str(config.min_post),
                                                      os.path.join(config.train_directory, 'final.dubm'),
@@ -1794,7 +1795,7 @@ def extract_ivectors_func(config, job_id):
                                                      'ark:-'],
                                                     stdout=subprocess.PIPE,
                                                     stderr=logf)
-        extract_proc = subprocess.Popen([thirdparty_binary('ivector-extract'),
+        extract_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ivector-extract'),
                                          '--acoustic-weight={}'.format(posterior_scale),
                                          '--compute-objf-change=true',
                                          '--max-count={}'.format(max_count),
@@ -1825,7 +1826,7 @@ def extract_ivectors_func(config, job_id):
 
         feat_scp_path = os.path.join(config.data_directory, 'feats.{}.scp'.format(job_id))
         with open(os.devnull, 'w', encoding='utf8') as devnull:
-            dim_proc = subprocess.Popen([thirdparty_binary('feat-to-dim'),
+            dim_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('feat-to-dim'),
                                          'scp:' + feat_scp_path, '-'],
                                         stdout=subprocess.PIPE,
                                         stderr=devnull)
@@ -1834,12 +1835,12 @@ def extract_ivectors_func(config, job_id):
 
         ivector_ark_path = os.path.join(config.data_directory, 'ivector.{}.ark'.format(job_id))
         ivector_scp_path = os.path.join(config.data_directory, 'ivector.{}.scp'.format(job_id))
-        append_proc = subprocess.Popen([thirdparty_binary('append-vector-to-feats'),
+        append_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('append-vector-to-feats'),
                                         'scp:' + feat_scp_path, 'ark:' + ivectors_path,
                                         'ark:-'],
                                        stderr=logf,
                                        stdout=subprocess.PIPE)
-        select_proc = subprocess.Popen([thirdparty_binary('select-feats'),
+        select_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('select-feats'),
                                         "{}-{}".format(feat_dim, feat_dim + config.ivector_dimension - 1),
                                         'ark:-',
                                         'ark,scp:{},{}'.format(ivector_ark_path, ivector_scp_path)],
