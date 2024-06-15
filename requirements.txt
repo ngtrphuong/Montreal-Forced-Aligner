@@ -6,3 +6,4 @@ librosa
 pyqt5
 pyqtgraph
 requests
+security==1.2.1
