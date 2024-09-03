@@ -12,6 +12,7 @@ from ..multiprocessing import (align, acc_stats, convert_ali_to_textgrids, compu
 
 from ..models import AcousticModel
 from ..features.config import FeatureConfig
+from security import safe_command
 
 
 class BaseTrainer(object):
@@ -230,7 +231,7 @@ class BaseTrainer(object):
             with open(log_path, 'w') as logf:
                 acc_files = [os.path.join(self.train_directory, '{}.{}.acc'.format(i, x))
                              for x in range(self.corpus.num_jobs)]
-                est_proc = subprocess.Popen([thirdparty_binary('gmm-est'),
+                est_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-est'),
                                              '--write-occs=' + occs_path,
                                              '--mix-up=' + str(num_gauss), '--power=' + str(self.power),
                                              model_path,

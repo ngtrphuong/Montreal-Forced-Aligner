@@ -6,6 +6,7 @@ from collections import defaultdict, Counter
 
 from .helper import thirdparty_binary
 from .exceptions import DictionaryPathError, DictionaryFileError, DictionaryError
+from security import safe_command
 
 
 def compile_graphemes(graphemes):
@@ -721,7 +722,7 @@ class Dictionary(object):
         log_path = os.path.join(self.output_directory, 'fst.log')
         temp_fst_path = os.path.join(self.output_directory, 'temp.fst')
         with open(log_path, 'w') as log_file:
-            compile_proc = subprocess.Popen([thirdparty_binary('fstcompile'), '--isymbols={}'.format(phones_file_path),
+            compile_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstcompile'), '--isymbols={}'.format(phones_file_path),
                              '--osymbols={}'.format(words_file_path),
                              '--keep_isymbols=false', '--keep_osymbols=false',
                              lexicon_fst_path, temp_fst_path], stderr=log_file)
@@ -734,25 +735,25 @@ class Dictionary(object):
                     f.write(str(self.phone_mapping['#0']))
                 with open(word_disambig_path, 'w') as f:
                     f.write(str(self.words_mapping['#0']))
-                selfloop_proc = subprocess.Popen([thirdparty_binary('fstaddselfloops'),
+                selfloop_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstaddselfloops'),
                                                   phone_disambig_path, word_disambig_path,
                                  temp_fst_path, temp2_fst_path], stderr=log_file)
                 selfloop_proc.communicate()
-                arc_sort_proc = subprocess.Popen([thirdparty_binary('fstarcsort'), '--sort_type=olabel',
+                arc_sort_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstarcsort'), '--sort_type=olabel',
                              temp2_fst_path, output_fst], stderr=log_file)
             else:
-                arc_sort_proc = subprocess.Popen([thirdparty_binary('fstarcsort'), '--sort_type=olabel',
+                arc_sort_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstarcsort'), '--sort_type=olabel',
                              temp_fst_path, output_fst], stderr=log_file)
             arc_sort_proc.communicate()
         if self.debug:
             dot_path = os.path.join(self.output_directory, 'L.dot')
             with open(log_path, 'w') as logf:
-                draw_proc = subprocess.Popen([thirdparty_binary('fstdraw'), '--portrait=true',
+                draw_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstdraw'), '--portrait=true',
                                               '--isymbols={}'.format(phones_file_path),
                                               '--osymbols={}'.format(words_file_path), output_fst, dot_path],
                                              stderr=logf)
                 draw_proc.communicate()
-                dot_proc = subprocess.Popen([thirdparty_binary('dot'), '-Tpdf', '-O', dot_path], stderr=logf)
+                dot_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('dot'), '-Tpdf', '-O', dot_path], stderr=logf)
                 dot_proc.communicate()
 
     def _write_fst_text(self, disambig=False):
