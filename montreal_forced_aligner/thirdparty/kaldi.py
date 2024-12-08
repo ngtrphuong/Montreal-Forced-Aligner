@@ -6,6 +6,7 @@ import subprocess
 import re
 
 from ..config import TEMP_DIR
+from security import safe_command
 
 if sys.platform == 'win32':
     exe_ext = '.exe'
@@ -124,7 +125,7 @@ def validate_binaries(file_list):
         if bin_file not in bin_files:
             not_found.append(bin_file)
             try:
-                pipes = subprocess.Popen([os.path.join(bin_out, bin_file), '--help'], stdout=subprocess.PIPE,
+                pipes = safe_command.run(subprocess.Popen, [os.path.join(bin_out, bin_file), '--help'], stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE, text=True)
                 std_out, std_err = pipes.communicate()
                 if std_err:

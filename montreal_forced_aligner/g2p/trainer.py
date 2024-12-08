@@ -12,6 +12,7 @@ import shutil
 import traceback
 import sys
 from typing import Set, Union
+from security import safe_command
 
 try:
     import pynini
@@ -261,7 +262,7 @@ class PairNGramAligner:
             likelihood = INF
             logger = logging.getLogger('g2p_aligner')
             logger.debug("Subprocess call: %s", cmd)
-            with subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True) as proc:
+            with safe_command.run(subprocess.Popen, cmd, stderr=subprocess.PIPE, text=True) as proc:
                 # Parses STDERR to capture the likelihood.
                 for line in proc.stderr:
                     match = re.match(
