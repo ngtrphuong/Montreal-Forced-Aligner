@@ -1,8 +1,8 @@
-import requests
 
 from montreal_forced_aligner.exceptions import ArgumentError
 from montreal_forced_aligner.models import G2PModel, AcousticModel
 from montreal_forced_aligner.utils import get_pretrained_acoustic_path, get_pretrained_g2p_path, get_dictionary_path
+from security import safe_requests
 
 
 def tqdm_hook(t):
@@ -19,7 +19,7 @@ def tqdm_hook(t):
 
 def list_available_languages(model_type):
     url = 'https://raw.githubusercontent.com/MontrealCorpusTools/mfa-models/master/{}/index.txt'.format(model_type)
-    r = requests.get(url)
+    r = safe_requests.get(url)
     if r.status_code == 404:
         raise
     out = r.text
@@ -45,7 +45,7 @@ def download_model(model_type, language):
         raise NotImplementedError
     url = 'https://github.com/MontrealCorpusTools/mfa-models/raw/master/{}/{}{}'.format(model_type, language, extension)
 
-    r = requests.get(url)
+    r = safe_requests.get(url)
     with open(out_path, 'wb') as f:
         f.write(r.content)
 
