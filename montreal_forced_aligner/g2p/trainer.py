@@ -41,7 +41,6 @@ from typing import Any, List, Tuple
 Labels = List[Any]
 
 TOKEN_TYPES = ["byte", "utf8"]
-DEV_NULL = open(os.devnull, "w")
 INF = float("inf")
 RAND_MAX = 32767
 
