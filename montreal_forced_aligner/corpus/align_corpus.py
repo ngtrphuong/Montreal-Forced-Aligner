@@ -1,7 +1,6 @@
 import os
 import sys
 import traceback
-import random
 from collections import Counter
 from textgrid import TextGrid, IntervalTier
 
@@ -11,6 +10,7 @@ from ..helper import load_text, output_mapping, save_groups, filter_scp
 from ..exceptions import SampleRateError, CorpusError
 
 from .base import BaseCorpus, get_sample_rate, get_n_channels, get_wav_duration, extract_temp_channels, get_bit_depth, find_ext
+import secrets
 
 
 def parse_transcription(text):
@@ -456,7 +456,7 @@ class AlignableCorpus(BaseCorpus):
         else:
             larger_subset = self.utterance_lengths.keys()
 
-        subset_utts = set(random.sample(larger_subset, subset))
+        subset_utts = set(secrets.SystemRandom().sample(larger_subset, subset))
         split_directory = self.split_directory()
         subset_directory = os.path.join(self.output_directory, 'subset_{}'.format(subset))
         log_dir = os.path.join(subset_directory, 'log')
