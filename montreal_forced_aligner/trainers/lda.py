@@ -6,6 +6,7 @@ import shutil
 from ..multiprocessing import (align, acc_stats, calc_lda_mllt, lda_acc_stats, compute_alignment_improvement)
 from ..helper import thirdparty_binary, make_path_safe, filter_scp
 from .triphone import TriphoneTrainer
+from security import safe_command
 
 
 class LdaTrainer(TriphoneTrainer):
@@ -112,7 +113,7 @@ class LdaTrainer(TriphoneTrainer):
             with open(log_path, 'w') as logf:
                 acc_files = [os.path.join(self.train_directory, '{}.{}.acc'.format(i, x))
                              for x in range(self.corpus.num_jobs)]
-                est_proc = subprocess.Popen([thirdparty_binary('gmm-est'),
+                est_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-est'),
                                              '--write-occs=' + occs_path,
                                              '--mix-up=' + str(num_gauss), '--power=' + str(self.power),
                                              model_path,

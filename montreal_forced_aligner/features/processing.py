@@ -5,6 +5,7 @@ from ..helper import make_path_safe, thirdparty_binary, filter_scp
 from ..exceptions import CorpusError
 
 from ..multiprocessing import run_mp, run_non_mp
+from security import safe_command
 
 
 def mfcc_func(directory, job_name, mfcc_config_path):  # pragma: no cover
@@ -17,20 +18,20 @@ def mfcc_func(directory, job_name, mfcc_config_path):  # pragma: no cover
 
     with open(log_path, 'w') as f:
         if os.path.exists(segment_path):
-            seg_proc = subprocess.Popen([thirdparty_binary('extract-segments'),
+            seg_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('extract-segments'),
                                          'scp,p:' + scp_path, segment_path, 'ark:-'],
                                         stdout=subprocess.PIPE, stderr=f)
-            comp_proc = subprocess.Popen([thirdparty_binary('compute-mfcc-feats'), '--verbose=2',
+            comp_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('compute-mfcc-feats'), '--verbose=2',
                                           '--config=' + mfcc_config_path,
                                           'ark:-', 'ark:-'],
                                          stdout=subprocess.PIPE, stderr=f, stdin=seg_proc.stdout)
         else:
 
-            comp_proc = subprocess.Popen([thirdparty_binary('compute-mfcc-feats'), '--verbose=2',
+            comp_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('compute-mfcc-feats'), '--verbose=2',
                                           '--config=' + mfcc_config_path,
                                           'scp,p:' + scp_path, 'ark:-'],
                                          stdout=subprocess.PIPE, stderr=f)
-        copy_proc = subprocess.Popen([thirdparty_binary('copy-feats'),
+        copy_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('copy-feats'),
                                       '--compress=true', 'ark:-',
                                       'ark,scp:{},{}'.format(raw_mfcc_path, raw_scp_path)],
                                      stdin=comp_proc.stdout, stderr=f)
@@ -84,7 +85,7 @@ def apply_cmvn_func(directory, job_name, config):
         cmvnpath = os.path.join(directory, 'cmvn.{}.scp'.format(job_name))
         featspath = os.path.join(directory, 'feats.{}.scp'.format(job_name))
         if not os.path.exists(normed_scp_path):
-            cmvn_proc = subprocess.Popen([thirdparty_binary('apply-cmvn'),
+            cmvn_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('apply-cmvn'),
                                           '--utt2spk=ark:' + utt2spkpath,
                                           'scp:' + cmvnpath,
                                           'scp:' + featspath,
@@ -109,18 +110,18 @@ def add_deltas_func(directory, job_name, config):
     scp_path = os.path.join(directory, config.feature_id + '.{}.scp'.format(job_name))
     with open(os.path.join(directory, 'log', 'add_deltas.{}.log'.format(job_name)), 'w') as logf:
         if config.fmllr_path is not None and os.path.exists(config.fmllr_path):
-            deltas_proc = subprocess.Popen([thirdparty_binary('add-deltas'),
+            deltas_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('add-deltas'),
                                             'scp:' + normed_scp_path, 'ark:-'],
                                            stderr=logf,
                                            stdout=subprocess.PIPE)
-            trans_proc = subprocess.Popen([thirdparty_binary('transform-feats'),
+            trans_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('transform-feats'),
                                            'ark:' + config.fmllr_path, 'ark:-',
                                            'ark,scp:{},{}'.format(ark_path, scp_path)],
                                           stdin=deltas_proc.stdout,
                                           stderr=logf)
             trans_proc.communicate()
         else:
-            deltas_proc = subprocess.Popen([thirdparty_binary('add-deltas'),
+            deltas_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('add-deltas'),
                                             'scp:' + normed_scp_path, 'ark,scp:{},{}'.format(ark_path, scp_path)],
                                            stderr=logf)
             deltas_proc.communicate()
@@ -142,14 +143,14 @@ def apply_lda_func(directory, job_name, config):
     log_path = os.path.join(directory, 'log', 'lda.{}.log'.format(job_name))
     with open(log_path, 'a') as logf:
         if os.path.exists(config.lda_path):
-            splice_feats_proc = subprocess.Popen([thirdparty_binary('splice-feats'),
+            splice_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('splice-feats'),
                                                   '--left-context={}'.format(config.splice_left_context),
                                                   '--right-context={}'.format(config.splice_right_context),
                                                   'scp:' + normed_scp_path,
                                                   'ark:-'],
                                                  stdout=subprocess.PIPE,
                                                  stderr=logf)
-            transform_feats_proc = subprocess.Popen([thirdparty_binary("transform-feats"),
+            transform_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary("transform-feats"),
                                                      config.lda_path,
                                                      'ark:-',
                                                      'ark,scp:{},{}'.format(ark_path, scp_path)],
@@ -158,7 +159,7 @@ def apply_lda_func(directory, job_name, config):
             transform_feats_proc.communicate()
         else:
             logf.write('could not find "{}"\n'.format(config.lda_path))
-            splice_feats_proc = subprocess.Popen([thirdparty_binary('splice-feats'),
+            splice_feats_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('splice-feats'),
                                                   '--left-context={}'.format(config.splice_left_context),
                                                   '--right-context={}'.format(config.splice_right_context),
                                                   'scp:' + normed_scp_path,
