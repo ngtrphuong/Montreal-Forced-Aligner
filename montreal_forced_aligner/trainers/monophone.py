@@ -6,6 +6,7 @@ from .base import BaseTrainer
 from ..helper import thirdparty_binary, make_path_safe
 
 from ..multiprocessing import (mono_align_equal, compile_train_graphs, compute_alignment_improvement)
+from security import safe_command
 
 
 class MonophoneTrainer(BaseTrainer):
@@ -48,7 +49,7 @@ class MonophoneTrainer(BaseTrainer):
         Get the number of gaussians for a monophone model
         """
         with open(os.devnull, 'w') as devnull:
-            proc = subprocess.Popen([thirdparty_binary('gmm-info'),
+            proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-info'),
                                      '--print-args=false',
                                      os.path.join(self.train_directory, '0.mdl')],
                                     stderr=devnull,
@@ -70,7 +71,7 @@ class MonophoneTrainer(BaseTrainer):
         shared_phones_opt = "--shared-phones=" + os.path.join(dictionary.phones_dir, 'sets.int')
         log_path = os.path.join(self.log_directory, 'init.log')
         with open(log_path, 'w') as log_file:
-            subprocess.call([thirdparty_binary('gmm-init-mono'), shared_phones_opt,
+            safe_command.run(subprocess.call, [thirdparty_binary('gmm-init-mono'), shared_phones_opt,
                              "--train-feats=scp:"+feat_path,
                              os.path.join(dictionary.output_directory, 'topo'),
                              str(feat_dim),
@@ -86,7 +87,7 @@ class MonophoneTrainer(BaseTrainer):
         log_path = os.path.join(self.train_directory, 'log', 'update.0.log')
         with open(log_path, 'w') as log_file:
             acc_files = [os.path.join(self.train_directory, '0.{}.acc'.format(x)) for x in range(corpus.num_jobs)]
-            est_proc = subprocess.Popen([thirdparty_binary('gmm-est'),
+            est_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-est'),
                                          '--min-gaussian-occupancy=3',
                                          '--mix-up={}'.format(num_gauss), '--power={}'.format(self.power),
                                          mdl_path, "{} - {}|".format(thirdparty_binary('gmm-sum-accs'),

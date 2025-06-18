@@ -8,6 +8,7 @@ from .multiprocessing import run_mp, run_non_mp
 from .trainers import MonophoneTrainer
 from .config import FeatureConfig
 from .aligner.pretrained import PretrainedAligner
+from security import safe_command
 
 
 def test_utterances_func(validator, job_name):
@@ -39,7 +40,7 @@ def test_utterances_func(validator, job_name):
     max_active = 750
     lat_path = os.path.join(aligner.align_directory, 'lat.{}'.format(job_name))
     with open(log_path, 'w') as logf:
-        latgen_proc = subprocess.Popen([thirdparty_binary('gmm-latgen-faster'),
+        latgen_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-latgen-faster'),
                                         '--acoustic-scale={}'.format(acoustic_scale),
                                         '--beam={}'.format(beam),
                                         '--max-active={}'.format(max_active), '--lattice-beam={}'.format(lattice_beam),
@@ -48,7 +49,7 @@ def test_utterances_func(validator, job_name):
                                        stderr=logf)
         latgen_proc.communicate()
 
-        oracle_proc = subprocess.Popen([thirdparty_binary('lattice-oracle'),
+        oracle_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('lattice-oracle'),
                                         'ark:' + lat_path, 'ark,t:' + text_int_path,
                                         'ark,t:' + out_int_path, 'ark,t:' + edits_path],
                                        stderr=logf)
@@ -78,7 +79,7 @@ def compile_utterance_train_graphs_func(validator, job_name):  # pragma: no cove
     log_path = os.path.join(aligner.align_directory, 'log', 'compile-graphs-fst.0.{}.log'.format(job_name))
 
     with open(log_path, 'w') as logf:
-        proc = subprocess.Popen([thirdparty_binary('compile-train-graphs-fsts'),
+        proc = safe_command.run(subprocess.Popen, [thirdparty_binary('compile-train-graphs-fsts'),
                                  '--transition-scale=1.0', '--self-loop-scale=0.1',
                                  '--read-disambig-syms={}'.format(disambig_int_path),
                                  tree_path, mdl_path,

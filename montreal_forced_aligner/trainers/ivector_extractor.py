@@ -9,6 +9,7 @@ from ..helper import thirdparty_binary, make_path_safe
 from ..multiprocessing import (gmm_gselect, acc_global_stats, gauss_to_post, acc_ivector_stats, extract_ivectors)
 
 from ..models import IvectorExtractor
+from security import safe_command
 
 
 class IvectorExtractorTrainer(BaseTrainer):
@@ -102,7 +103,7 @@ class IvectorExtractorTrainer(BaseTrainer):
                         outf.write(line)
         with open(log_path, 'w') as logf:
 
-            gmm_init_proc = subprocess.Popen([thirdparty_binary('gmm-global-init-from-feats'),
+            gmm_init_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-global-init-from-feats'),
                                               '--num-threads=' + str(self.ubm_num_threads),
                                               '--num-frames=' + str(self.ubm_num_frames),
                                               '--num_gauss=' + str(self.ubm_num_gaussians),
@@ -131,7 +132,7 @@ class IvectorExtractorTrainer(BaseTrainer):
             with open(log_path, 'w') as logf:
                 acc_files = [os.path.join(self.train_directory, '{}.{}.acc'.format(i, x))
                              for x in range(self.corpus.num_jobs)]
-                gmm_global_est_proc = subprocess.Popen([thirdparty_binary('gmm-global-est'),
+                gmm_global_est_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('gmm-global-est'),
                                                         opt,
                                                         '--min-gaussian-weight=' + str(self.ubm_min_gaussian_weight),
                                                         os.path.join(self.train_directory, '{}.dubm'.format(i)),
@@ -148,7 +149,7 @@ class IvectorExtractorTrainer(BaseTrainer):
         # Convert final.ubm to fgmm
         log_path = os.path.join(self.train_directory, 'log', 'global_to_fgmm.log')
         with open(log_path, 'w') as logf:
-            subprocess.call([thirdparty_binary('gmm-global-to-fgmm'),
+            safe_command.run(subprocess.call, [thirdparty_binary('gmm-global-to-fgmm'),
                              os.path.join(self.train_directory, 'final.dubm'),
                              os.path.join(self.train_directory, '0.fgmm')],
                             stdout=subprocess.PIPE,
@@ -157,7 +158,7 @@ class IvectorExtractorTrainer(BaseTrainer):
         # Initialize i-vector extractor
         log_path = os.path.join(self.train_directory, 'log', 'init.log')
         with open(log_path, 'w') as logf:
-            subprocess.call([thirdparty_binary('ivector-extractor-init'),
+            safe_command.run(subprocess.call, [thirdparty_binary('ivector-extractor-init'),
                              '--ivector-dim=' + str(self.ivector_dimension),
                              '--use-weights=false',
                              os.path.join(self.train_directory, '0.fgmm'),
@@ -184,7 +185,7 @@ class IvectorExtractorTrainer(BaseTrainer):
             # Est extractor
             log_path = os.path.join(self.train_directory, 'log', 'update.{}.log'.format(i))
             with open(log_path, 'w') as logf:
-                extractor_est_proc = subprocess.Popen([thirdparty_binary('ivector-extractor-est'),
+                extractor_est_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('ivector-extractor-est'),
                                                        '--gaussian-min-count={}'.format(self.gaussian_min_count),
                                                        os.path.join(self.train_directory, '{}.ie'.format(i)),
                                                        os.path.join(self.train_directory, 'acc.{}'.format(i)),

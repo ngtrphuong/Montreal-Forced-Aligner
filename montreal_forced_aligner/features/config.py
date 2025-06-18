@@ -5,6 +5,7 @@ from ..exceptions import ConfigError
 from .processing import mfcc, add_deltas, apply_cmvn, apply_lda
 
 from ..helper import thirdparty_binary, load_scp, save_groups
+from security import safe_command
 
 
 def make_safe(value):
@@ -111,7 +112,7 @@ class FeatureConfig(object):
         cmvn_scp = os.path.join(cmvn_directory, 'cmvn.scp')
         log_path = os.path.join(cmvn_directory, 'cmvn.log')
         with open(log_path, 'w') as logf:
-            subprocess.call([thirdparty_binary('compute-cmvn-stats'),
+            safe_command.run(subprocess.call, [thirdparty_binary('compute-cmvn-stats'),
                              '--spk2utt=ark:' + spk2utt,
                              'scp:' + feats, 'ark,scp:{},{}'.format(cmvn_ark, cmvn_scp)],
                             stderr=logf)

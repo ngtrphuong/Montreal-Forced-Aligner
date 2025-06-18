@@ -8,6 +8,7 @@ from .helper import thirdparty_binary
 from .multiprocessing import transcribe, transcribe_fmllr
 from .corpus import AlignableCorpus
 from .helper import score
+from security import safe_command
 
 
 class Transcriber(object):
@@ -42,7 +43,7 @@ class Transcriber(object):
         return os.path.join(self.temp_directory, 'transcribe')
 
     def get_tree_info(self):
-        tree_proc = subprocess.Popen([thirdparty_binary('tree-info'),
+        tree_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('tree-info'),
                             os.path.join(self.transcribe_directory, 'tree')], text=True,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, _ = tree_proc.communicate()
@@ -86,7 +87,7 @@ class Transcriber(object):
         with open(log_path, 'w') as log_file:
             if not os.path.exists(g_path):
                 print('Generating G.fst...')
-                arpafst_proc = subprocess.Popen([thirdparty_binary('arpa2fst'), '--disambig-symbol=#0',
+                arpafst_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('arpa2fst'), '--disambig-symbol=#0',
                                  '--read-symbol-table=' + self.dictionary.words_symbol_path,
                                  self.language_model.arpa_path, g_path], stderr=log_file, stdout=log_file)
                 arpafst_proc.communicate()
@@ -94,43 +95,43 @@ class Transcriber(object):
             if not os.path.exists(lg_path):
                 print('Generating LG.fst...')
                 temp_compose_path = os.path.join(self.transcribe_directory, 'LG.temp')
-                compose_proc = subprocess.Popen([thirdparty_binary('fsttablecompose'),
+                compose_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fsttablecompose'),
                                                  self.dictionary.disambig_path, g_path, temp_compose_path],
                                                 stderr=log_file)
                 compose_proc.communicate()
 
                 temp2_compose_path = os.path.join(self.transcribe_directory, 'LG.temp2')
-                determinize_proc = subprocess.Popen([thirdparty_binary('fstdeterminizestar'),
+                determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstdeterminizestar'),
                                                      '--use-log=true', temp_compose_path, temp2_compose_path],
                                                     stderr=log_file)
                 determinize_proc.communicate()
                 os.remove(temp_compose_path)
 
-                minimize_proc = subprocess.Popen([thirdparty_binary('fstminimizeencoded'),
+                minimize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstminimizeencoded'),
                                                   temp2_compose_path, temp_compose_path],
                                                  stdout=subprocess.PIPE, stderr=log_file)
                 minimize_proc.communicate()
                 os.remove(temp2_compose_path)
-                push_proc = subprocess.Popen([thirdparty_binary('fstpushspecial'), temp_compose_path, lg_path],
+                push_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstpushspecial'), temp_compose_path, lg_path],
                                              stderr=log_file)
                 push_proc.communicate()
                 os.remove(temp_compose_path)
                 print('Done!')
             if not os.path.exists(clg_path):
                 print('Generating CLG.fst...')
-                compose_proc = subprocess.Popen([thirdparty_binary('fstcomposecontext'),
+                compose_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstcomposecontext'),
                                                  '--context-size={}'.format(context_width),
                                                  '--central-position={}'.format(central_pos),
                                                  '--read-disambig-syms={}'.format(in_disambig),
                                                  '--write-disambig-syms={}'.format(out_disambig),
                                                  ilabels_temp, lg_path], stdout=subprocess.PIPE, stderr=log_file)
-                sort_proc = subprocess.Popen([thirdparty_binary('fstarcsort'), '--sort_type=ilabel', '-', clg_path],
+                sort_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstarcsort'), '--sort_type=ilabel', '-', clg_path],
                                              stdin=compose_proc.stdout, stderr=log_file)
                 sort_proc.communicate()
                 print('Done!')
             if not os.path.exists(hclga_path):
                 print('Generating HCLGa.fst...')
-                make_h_proc = subprocess.Popen([thirdparty_binary('make-h-transducer'),
+                make_h_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('make-h-transducer'),
                                                 '--disambig-syms-out={}'.format(ha_out_disambig),
                                                 '--transition-scale={}'.format(self.transcribe_config.transition_scale),
                                                 ilabels_temp, tree_path, model_path, ha_path],
@@ -138,28 +139,28 @@ class Transcriber(object):
                 make_h_proc.communicate()
 
                 temp_compose_path = os.path.join(self.transcribe_directory, 'HCLGa.temp')
-                compose_proc = subprocess.Popen([thirdparty_binary('fsttablecompose'), ha_path,
+                compose_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fsttablecompose'), ha_path,
                                                  clg_path, temp_compose_path], stderr=log_file)
                 compose_proc.communicate()
 
-                determinize_proc = subprocess.Popen([thirdparty_binary('fstdeterminizestar'),
+                determinize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstdeterminizestar'),
                                                      '--use-log=true', temp_compose_path],
                                                     stdout=subprocess.PIPE, stderr=log_file)
-                rmsymbols_proc = subprocess.Popen([thirdparty_binary('fstrmsymbols'), ha_out_disambig],
+                rmsymbols_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstrmsymbols'), ha_out_disambig],
                                                   stdin=determinize_proc.stdout, stdout=subprocess.PIPE, stderr=log_file)
-                rmeps_proc = subprocess.Popen([thirdparty_binary('fstrmepslocal')],
+                rmeps_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstrmepslocal')],
                                               stdin=rmsymbols_proc.stdout, stdout=subprocess.PIPE, stderr=log_file)
-                minimize_proc = subprocess.Popen([thirdparty_binary('fstminimizeencoded'), '-', hclga_path],
+                minimize_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstminimizeencoded'), '-', hclga_path],
                                                  stdin=rmeps_proc.stdout, stderr=log_file)
                 minimize_proc.communicate()
                 os.remove(temp_compose_path)
                 print('Done!')
             print('Finishing up...')
-            self_loop_proc = subprocess.Popen([thirdparty_binary('add-self-loops'),
+            self_loop_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('add-self-loops'),
                                                '--self-loop-scale={}'.format(self.transcribe_config.self_loop_scale),
                                                '--reorder=true', model_path, hclga_path],
                                               stdout=subprocess.PIPE, stderr=log_file)
-            convert_proc = subprocess.Popen([thirdparty_binary('fstconvert'), '--fst_type=const', '-', hclg_path],
+            convert_proc = safe_command.run(subprocess.Popen, [thirdparty_binary('fstconvert'), '--fst_type=const', '-', hclg_path],
                                             stdin=self_loop_proc.stdout, stderr=log_file)
             convert_proc.communicate()
             print('Finished graph construction!')
