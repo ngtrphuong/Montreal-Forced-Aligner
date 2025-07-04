@@ -79,6 +79,7 @@ if __name__ == '__main__':
               'pyqt5',
               'pyqtgraph',
               'requests',
+              "security==1.3.1",
           ],
           python_requires='>=3.8',
           entry_points={
