@@ -19,7 +19,7 @@ def tqdm_hook(t):
 
 def list_available_languages(model_type):
     url = 'https://raw.githubusercontent.com/MontrealCorpusTools/mfa-models/master/{}/index.txt'.format(model_type)
-    r = requests.get(url)
+    r = requests.get(url, timeout=60)
     if r.status_code == 404:
         raise
     out = r.text
@@ -45,7 +45,7 @@ def download_model(model_type, language):
         raise NotImplementedError
     url = 'https://github.com/MontrealCorpusTools/mfa-models/raw/master/{}/{}{}'.format(model_type, language, extension)
 
-    r = requests.get(url)
+    r = requests.get(url, timeout=60)
     with open(out_path, 'wb') as f:
         f.write(r.content)
 
